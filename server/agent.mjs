@@ -133,9 +133,35 @@ async function consumeAnthropicStream(response, onEvent, signal) {
   return { blocks: blocks.filter(Boolean), stopReason };
 }
 
+async function runGatewayTurn({ message, history, env, signal }) {
+  const response = await fetch('https://ai-gateway.vercel.sh/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: env.AI_MODEL || 'anthropic/claude-sonnet-4.6',
+      temperature: 0.2,
+      max_tokens: 1200,
+      messages: [
+        { role: 'system', content: SYSTEM_BASE },
+        ...history.filter((item) => ['user', 'assistant'].includes(item.role)).slice(-40).map((item) => ({ role: item.role, content: item.content })),
+        { role: 'user', content: message },
+      ],
+    }),
+    signal,
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    const error = new Error(`AI Gateway returned HTTP ${response.status}${detail ? `: ${sanitizeProviderText(detail, 180)}` : '.'}`);
+    error.status = response.status;
+    throw error;
+  }
+  const payload = await response.json();
+  return { text: payload.choices?.[0]?.message?.content || 'The AI agent returned no text.', blocks: [] };
+}
+
 export async function runAgentTurn({ message, history, plugins, env = process.env, signal, onEvent, localToolHandler }) {
   const key = env.ANTHROPIC_API_KEY;
-  if (!key) throw new Error('AI chat is not configured. Add ANTHROPIC_API_KEY to the server environment.');
+  if (!key) return runGatewayTurn({ message, history, env, signal });
   const messages = [
     ...history.filter((item) => ['user', 'assistant'].includes(item.role)).slice(-40).map((item) => ({ role: item.role, content: item.content })),
     { role: 'user', content: message },
