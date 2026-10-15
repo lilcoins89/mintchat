@@ -397,7 +397,7 @@ export function App() {
   }
 
   function onComposerKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === 'Enter' && !event.shiftKey) {
+    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
       event.preventDefault();
       void sendMessage();
     }
@@ -495,8 +495,10 @@ export function App() {
               <div className="section-title"><h3>Data sources</h3><span className="source-state">ON DEMAND</span></div>
               <div className="source-row"><span className="source-icon dex-icon">D</span><span><strong>DexScreener</strong><small>Price · liquidity · volume · age</small></span><span className="source-state">{dexStatus}</span></div>
               <div className="source-row"><span className="source-icon sol-icon">◎</span><span><strong>Solana RPC</strong><small>Authority · supply · token accounts</small></span><span className="source-state">{rpcStatus}</span></div>
-              <div className="source-row"><span className="source-icon jup-icon">J</span><span><strong>Jupiter quotes</strong><small>Quote only · no signing</small></span><span className="source-state">{quoteStatus}</span></div>
-            </div>
+  <div className="source-row"><span className="source-icon jup-icon">J</span><span><strong>Jupiter quotes</strong><small>Quote only · no signing</small></span><span className="source-state">{quoteStatus}</span></div>
+  <div className="source-row"><span className="source-icon agent-icon">A</span><span><strong>Agent runtime</strong><small>OpenClaw / Docker Agent boundary</small></span><span className="source-state">LOCAL</span></div>
+  <div className="source-row"><span className="source-icon local-icon">G</span><span><strong>Local model lane</strong><small>GPT4All-compatible research fallback</small></span><span className="source-state">OPT-IN</span></div>
+  </div>
 
             <div className="panel-section guardrail-section">
               <div className="section-title"><h3>Trading guardrails</h3></div>

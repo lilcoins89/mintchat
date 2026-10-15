@@ -4,6 +4,16 @@ const DEFAULT_DEX = 'https://api.dexscreener.com';
 const DEFAULT_RPC = 'https://api.mainnet-beta.solana.com';
 const DEFAULT_JUPITER = 'https://api.jup.ag/swap/v2/order';
 
+function rpcUrl(env) {
+  if (env.HELIUS_RPC_URL) return env.HELIUS_RPC_URL;
+  if (env.HELIUS_API_KEY) {
+    const url = new URL('https://mainnet.helius-rpc.com/');
+    url.searchParams.set('api-key', env.HELIUS_API_KEY);
+    return url.href;
+  }
+  return env.SOLANA_RPC_URL || DEFAULT_RPC;
+}
+
 function cleanLabel(value, limit = 80) {
   return sanitizeProviderText(String(value ?? ''), limit).replace(/[<>]/g, '');
 }
@@ -41,13 +51,25 @@ export async function searchMarket(query, { env = process.env, fetchImpl = fetch
 }
 
 async function rpc(method, params, { env = process.env, fetchImpl = fetch } = {}) {
-  const response = await readJson(env.SOLANA_RPC_URL || DEFAULT_RPC, {
+  const response = await readJson(rpcUrl(env), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ jsonrpc: '2.0', id: 'mintchat', method, params }),
   }, fetchImpl);
   if (response.error) throw new Error(`Solana RPC method ${method} failed.`);
   return response.result;
+}
+
+async function getHeliusTokenMetadata(mint, { env = process.env, fetchImpl = fetch } = {}) {
+  if (!env.HELIUS_API_KEY) return null;
+  const url = new URL(env.HELIUS_TOKEN_METADATA_URL || 'https://api.helius.xyz/v0/token-metadata');
+  url.searchParams.set('api-key', env.HELIUS_API_KEY);
+  const data = await readJson(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mintAccounts: [mint] }),
+  }, fetchImpl);
+  return Array.isArray(data) ? data[0] ?? null : null;
 }
 
 async function getJupiterShield(mint, { env = process.env, fetchImpl = fetch } = {}) {
@@ -65,12 +87,14 @@ export async function getTokenRisk(mint, { env = process.env, fetchImpl = fetch 
     rpc('getTokenLargestAccounts', [address, { commitment: 'confirmed' }], { env, fetchImpl }),
     searchMarket(address, { env, fetchImpl }),
     getJupiterShield(address, { env, fetchImpl }),
+    getHeliusTokenMetadata(address, { env, fetchImpl }),
   ]);
   const account = results[0].status === 'fulfilled' ? results[0].value?.value?.data?.parsed?.info : null;
   const supply = results[1].status === 'fulfilled' ? results[1].value?.value : null;
   const largest = results[2].status === 'fulfilled' ? results[2].value?.value : null;
   const market = results[3].status === 'fulfilled' ? results[3].value : null;
   const shieldData = results[4].status === 'fulfilled' ? results[4].value : null;
+  const heliusMetadata = results[5].status === 'fulfilled' ? results[5].value : null;
   const shieldStatus = env.JUPITER_API_KEY && results[4].status === 'fulfilled' && Array.isArray(shieldData?.warnings?.[address]) ? 'checked' : 'unavailable';
   const shieldWarnings = (shieldStatus === 'checked' ? shieldData.warnings[address] : []).slice(0, 12).map((warning) => ({
     type: cleanLabel(warning?.type, 64).toUpperCase(),
@@ -116,7 +140,12 @@ export async function getTokenRisk(mint, { env = process.env, fetchImpl = fetch 
 
   return {
     mint: address,
-    source: 'Solana RPC + DexScreener',
+    source: env.HELIUS_API_KEY ? 'Helius RPC + Helius Token Metadata + DexScreener' : 'Solana RPC + DexScreener',
+    metadata: heliusMetadata ? {
+      name: cleanLabel(heliusMetadata.onChainMetadata?.metadata?.name || heliusMetadata.offChainMetadata?.name, 120) || null,
+      symbol: cleanLabel(heliusMetadata.onChainMetadata?.metadata?.symbol || heliusMetadata.offChainMetadata?.symbol, 32) || null,
+      verified: heliusMetadata.onChainAccountInfo?.accountInfo?.owner === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' || null,
+    } : null,
     mintAuthority,
     freezeAuthority,
     topTenTokenAccountSharePct: topAccountsSharePct,
