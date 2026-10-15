@@ -1,0 +1,20 @@
+{
+  "plugins": [
+    {
+      "name": "paybox",
+      "transport": "mcp",
+      "url": "https://api.paybox.sh/mcp",
+      "tokenEnv": "PAYBOX_ACCESS_TOKEN",
+      "readTools": ["discover_tokens", "list_credentials", "get_portfolio", "verify_solana_balance", "get_request"],
+      "writeTools": ["request_swap", "request_transfer"]
+    },
+    {
+      "name": "market-data",
+      "transport": "local",
+      "url": "https://api.dexscreener.com",
+      "tokenEnv": "",
+      "readTools": ["get_token_market_data", "get_token_risk"],
+      "writeTools": []
+    }
+  ]
+}

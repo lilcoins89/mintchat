@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "MintChat — Solana Research Desk",
+  "short_name": "MintChat",
+  "description": "A careful Solana token research desk with trading locked by default.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0e14",
+  "theme_color": "#0a0e14",
+  "orientation": "any",
+  "icons": [
+    { "src": "/mint-mark.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

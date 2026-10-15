@@ -1,0 +1,5 @@
+{
+  "routes": [
+    { "path": "/", "title": "MintChat — Solana Research Desk" }
+  ]
+}
